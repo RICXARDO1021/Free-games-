@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2 Players vs 2 AI - Catch the Fruits 🍎</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+    }
+    .scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: space-between;
+      width: 95%;
+      font-size: 20px;
+      color: #333;
+    }
+    canvas {
+      background-color: #f8f8f8;
+      border: 1px solid #ccc;
+    }
+    #canvas1, #canvas2, #canvas3, #canvas4 {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="scoreboard">
+    <div>Player 1 Score: <span id="player1Score">0</span></div>
+    <div>Player 2 Score: <span id="player2Score">0</span></div>
+    <div>AI 1 Score: <span id="player3Score">0</span></div>
+    <div>AI 2 Score: <span id="player4Score">0</span></div>
+  </div>
+  <canvas id="canvas1"></canvas>
+  <canvas id="canvas2"></canvas>
+  <canvas id="canvas3"></canvas>
+  <canvas id="canvas4"></canvas>
+
+  <script>
+    const canvases = [
+      document.getElementById("canvas1"),
+      document.getElementById("canvas2"),
+      document.getElementById("canvas3"),
+      document.getElementById("canvas4")
+    ];
+
+    const canvasWidth = window.innerWidth / 4;
+    const canvasHeight = window.innerHeight;
+
+    canvases.forEach(canvas => {
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+    });
+
+    const contexts = canvases.map(canvas => canvas.getContext("2d"));
+
+    const playerScores = [
+      document.getElementById("player1Score"),
+      document.getElementById("player2Score"),
+      document.getElementById("player3Score"),
+      document.getElementById("player4Score")
+    ];
+
+    const baskets = [
+      { x: canvasWidth / 2 - 40, y: canvasHeight - 50, width: 80, height: 15, color: "gray", speed: 15, score: 0 },
+      { x: canvasWidth / 2 - 40, y: canvasHeight - 50, width: 80, height: 15, color: "blue", speed: 15, score: 0 },
+      { x: canvasWidth / 2 - 40, y: canvasHeight - 50, width: 80, height: 15, color: "green", speed: 15, score: 0 },
+      { x: canvasWidth / 2 - 40, y: canvasHeight - 50, width: 80, height: 15, color: "red", speed: 15, score: 0 }
+    ];
+
+    const fruits = ["🍎", "🍌", "🍓", "🍇", "🥝", "🍍", "🍒", "🥥"];
+    const fallingFruits = Array.from({ length: 4 }, () => []);
+
+    let isPaused = false;
+
+    function createFruit(canvas) {
+      return {
+        emoji: fruits[Math.floor(Math.random() * fruits.length)],
+        x: Math.random() * (canvas.width - 30),
+        y: 0,
+        size: 30,
+        speed: 3 + Math.random() * 3
+      };
+    }
+
+    function generateFruits(fruitsArray, canvas) {
+      for (let i = 0; i < 3; i++) {
+        fruitsArray.push(createFruit(canvas));
+      }
+    }
+
+    fallingFruits.forEach((fruitsArray, index) => generateFruits(fruitsArray, canvases[index]));
+
+    const keys = {
+      player1: { left: false, right: false },
+      player2: { left: false, right: false }
+    };
+
+    function drawBasket(ctx, basket) {
+      ctx.fillStyle = basket.color;
+      ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+    }
+
+    function drawFruits(ctx, fruits) {
+      fruits.forEach(fruit => {
+        ctx.font = `${fruit.size}px Arial`;
+        ctx.fillText(fruit.emoji, fruit.x, fruit.y);
+      });
+    }
+
+    function updateFruits(fruits, canvas, basket, updateScoreCallback) {
+      fruits.forEach((fruit, index) => {
+        fruit.y += fruit.speed;
+
+        if (fruit.y > canvas.height) {
+          fruits.splice(index, 1);
+          fruits.push(createFruit(canvas));
+        }
+
+        if (
+          fruit.y + fruit.size > basket.y &&
+          fruit.x + fruit.size > basket.x &&
+          fruit.x < basket.x + basket.width
+        ) {
+          updateScoreCallback();
+          fruits.splice(index, 1);
+          fruits.push(createFruit(canvas));
+        }
+      });
+    }
+
+    function updateBasket(basket, canvas, controls) {
+      if (controls.left && basket.x > 0) basket.x -= basket.speed;
+      if (controls.right && basket.x < canvas.width - basket.width) basket.x += basket.speed;
+    }
+
+    function updateAIBasket(basket, fruitsArray, canvas) {
+      if (fruitsArray.length > 0) {
+        const closestFruit = fruitsArray.reduce((closest, fruit) => {
+          return Math.abs(fruit.x - basket.x) < Math.abs(closest.x - basket.x) ? fruit : closest;
+        });
+
+        if (closestFruit.x < basket.x && basket.x > 0) {
+          basket.x -= basket.speed;
+        } else if (closestFruit.x > basket.x + basket.width && basket.x < canvas.width - basket.width) {
+          basket.x += basket.speed;
+        }
+      }
+    }
+
+    function updateScores() {
+      baskets.forEach((basket, index) => {
+        playerScores[index].textContent = basket.score;
+      });
+    }
+
+    function gameLoop() {
+      if (isPaused) return;
+
+      contexts.forEach((ctx, i) => {
+        ctx.clearRect(0, 0, canvases[i].width, canvases[i].height);
+
+        if (i === 0) {
+          // Player 1 controls
+          updateBasket(baskets[i], canvases[i], keys.player1);
+        } else if (i === 1) {
+          // Player 2 controls
+          updateBasket(baskets[i], canvases[i], keys.player2);
+        } else {
+          // AI controls for remaining baskets
+          updateAIBasket(baskets[i], fallingFruits[i], canvases[i]);
+        }
+
+        updateFruits(fallingFruits[i], canvases[i], baskets[i], () => {
+          baskets[i].score++;
+          updateScores();
+        });
+        drawBasket(ctx, baskets[i]);
+        drawFruits(ctx, fallingFruits[i]);
+      });
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", e => {
+      switch (e.key) {
+        case "a": keys.player1.left = true; break;
+        case "d": keys.player1.right = true; break;
+        case "j": keys.player2.left = true; break;
+        case "l": keys.player2.right = true; break;
+        case "p": // Toggle pause and play
+          isPaused = !isPaused;
+          if (!isPaused) gameLoop();
+          break;
+      }
+    });
+
+    document.addEventListener("keyup", e => {
+      switch (e.key) {
+        case "a": keys.player1.left = false; break;
+        case "d": keys.player1.right = false; break;
+        case "j": keys.player2.left = false; break;
+        case "l": keys.player2.right = false; break;
+      }
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>

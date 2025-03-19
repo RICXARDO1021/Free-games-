@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catch the Fruits 🍎 - Single Player</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .scoreboard {
+      position: absolute;
+      top: 10px;
+      font-size: 20px;
+      color: #333;
+    }
+    canvas {
+      background-color: #f8f8f8;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="scoreboard">
+    Player Score: <span id="playerScore">0</span>
+  </div>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const playerScoreElement = document.getElementById("playerScore");
+
+    const basket = {
+      x: canvas.width / 2 - 40,
+      y: canvas.height - 50,
+      width: 80,
+      height: 15,
+      color: "gray",
+      speed: 15,
+      score: 0
+    };
+
+    const fruits = ["🍎", "🍌", "🍓", "🍇", "🥝", "🍍", "🍒", "🥥"];
+    const fallingFruits = [];
+
+    let isPaused = false;
+
+    function createFruit() {
+      return {
+        emoji: fruits[Math.floor(Math.random() * fruits.length)],
+        x: Math.random() * (canvas.width - 30),
+        y: 0,
+        size: 30,
+        speed: 3 + Math.random() * 3
+      };
+    }
+
+    function generateFruits() {
+      for (let i = 0; i < 3; i++) {
+        fallingFruits.push(createFruit());
+      }
+    }
+
+    generateFruits();
+
+    const keys = {
+      left: false,
+      right: false
+    };
+
+    function drawBasket() {
+      ctx.fillStyle = basket.color;
+      ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+    }
+
+    function drawFruits() {
+      fallingFruits.forEach(fruit => {
+        ctx.font = `${fruit.size}px Arial`;
+        ctx.fillText(fruit.emoji, fruit.x, fruit.y);
+      });
+    }
+
+    function updateFruits() {
+      fallingFruits.forEach((fruit, index) => {
+        fruit.y += fruit.speed;
+
+        if (fruit.y > canvas.height) {
+          fallingFruits.splice(index, 1);
+          fallingFruits.push(createFruit());
+        }
+
+        if (
+          fruit.y + fruit.size > basket.y &&
+          fruit.x + fruit.size > basket.x &&
+          fruit.x < basket.x + basket.width
+        ) {
+          basket.score++;
+          playerScoreElement.textContent = basket.score;
+          fallingFruits.splice(index, 1);
+          fallingFruits.push(createFruit());
+        }
+      });
+    }
+
+    function updateBasket() {
+      if (keys.left && basket.x > 0) basket.x -= basket.speed;
+      if (keys.right && basket.x < canvas.width - basket.width) basket.x += basket.speed;
+    }
+
+    function gameLoop() {
+      if (isPaused) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      updateBasket();
+      updateFruits();
+      drawBasket();
+      drawFruits();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", e => {
+      switch (e.key) {
+        case "a": keys.left = true; break;
+        case "d": keys.right = true; break;
+        case "p": // Toggle pause and play
+          isPaused = !isPaused;
+          if (!isPaused) gameLoop();
+          break;
+      }
+    });
+
+    document.addEventListener("keyup", e => {
+      switch (e.key) {
+        case "a": keys.left = false; break;
+        case "d": keys.right = false; break;
+      }
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>

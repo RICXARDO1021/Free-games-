@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catch the Fruits 🍎 - Pause and Play</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+    }
+    .scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: space-between;
+      width: 90%;
+      font-size: 20px;
+      color: #333;
+    }
+    canvas {
+      background-color: #f8f8f8;
+      border: 1px solid #ccc;
+    }
+    #canvas1, #canvas2, #canvas3 {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="scoreboard">
+    <div>Player 1 Score: <span id="player1Score">0</span></div>
+    <div>Player 2 Score: <span id="player2Score">0</span></div>
+    <div>Player 3 Score: <span id="player3Score">0</span></div>
+  </div>
+  <canvas id="canvas1"></canvas>
+  <canvas id="canvas2"></canvas>
+  <canvas id="canvas3"></canvas>
+
+  <script>
+    // Initialize canvases
+    const canvas1 = document.getElementById("canvas1");
+    const canvas2 = document.getElementById("canvas2");
+    const canvas3 = document.getElementById("canvas3");
+
+    const canvasWidth = window.innerWidth / 3;
+    const canvasHeight = window.innerHeight;
+
+    canvas1.width = canvasWidth;
+    canvas1.height = canvasHeight;
+    canvas2.width = canvasWidth;
+    canvas2.height = canvasHeight;
+    canvas3.width = canvasWidth;
+    canvas3.height = canvasHeight;
+
+    const ctx1 = canvas1.getContext("2d");
+    const ctx2 = canvas2.getContext("2d");
+    const ctx3 = canvas3.getContext("2d");
+
+    const player1ScoreElement = document.getElementById("player1Score");
+    const player2ScoreElement = document.getElementById("player2Score");
+    const player3ScoreElement = document.getElementById("player3Score");
+
+    const baskets = [
+      { x: canvas1.width / 2 - 40, y: canvas1.height - 50, width: 80, height: 15, color: "gray", speed: 15, score: 0 },
+      { x: canvas2.width / 2 - 40, y: canvas2.height - 50, width: 80, height: 15, color: "blue", speed: 15, score: 0 },
+      { x: canvas3.width / 2 - 40, y: canvas3.height - 50, width: 80, height: 15, color: "green", speed: 15, score: 0 }
+    ];
+
+    const fruits = ["🍎", "🍌", "🍓", "🍇", "🥝", "🍍", "🍒", "🥥"];
+    const fallingFruits = [[], [], []];
+
+    let isPaused = false;
+
+    function createFruit(canvas) {
+      return {
+        emoji: fruits[Math.floor(Math.random() * fruits.length)],
+        x: Math.random() * (canvas.width - 30),
+        y: 0,
+        size: 30,
+        speed: 3 + Math.random() * 3
+      };
+    }
+
+    function generateFruits(fruitsArray, canvas) {
+      for (let i = 0; i < 3; i++) {
+        fruitsArray.push(createFruit(canvas));
+      }
+    }
+
+    generateFruits(fallingFruits[0], canvas1);
+    generateFruits(fallingFruits[1], canvas2);
+    generateFruits(fallingFruits[2], canvas3);
+
+    const keys = {
+      player1: { left: false, right: false },
+      player2: { left: false, right: false },
+      player3: { left: false, right: false }
+    };
+
+    function drawBasket(ctx, basket) {
+      ctx.fillStyle = basket.color;
+      ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+    }
+
+    function drawFruits(ctx, fruits) {
+      fruits.forEach(fruit => {
+        ctx.font = `${fruit.size}px Arial`;
+        ctx.fillText(fruit.emoji, fruit.x, fruit.y);
+      });
+    }
+
+    function updateFruits(fruits, canvas, basket, updateScoreCallback) {
+      fruits.forEach((fruit, index) => {
+        fruit.y += fruit.speed;
+
+        if (fruit.y > canvas.height) {
+          fruits.splice(index, 1);
+          fruits.push(createFruit(canvas));
+        }
+
+        if (
+          fruit.y + fruit.size > basket.y &&
+          fruit.x + fruit.size > basket.x &&
+          fruit.x < basket.x + basket.width
+        ) {
+          updateScoreCallback();
+          fruits.splice(index, 1);
+          fruits.push(createFruit(canvas));
+        }
+      });
+    }
+
+    function updateBasket(basket, canvas, controls) {
+      if (controls.left && basket.x > 0) basket.x -= basket.speed;
+      if (controls.right && basket.x < canvas.width - basket.width) basket.x += basket.speed;
+    }
+
+    function updateScores() {
+      player1ScoreElement.textContent = baskets[0].score;
+      player2ScoreElement.textContent = baskets[1].score;
+      player3ScoreElement.textContent = baskets[2].score;
+    }
+
+    function gameLoop() {
+      if (isPaused) return;
+
+      ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+      ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+      ctx3.clearRect(0, 0, canvas3.width, canvas3.height);
+
+      [ctx1, ctx2, ctx3].forEach((ctx, i) => {
+        updateBasket(baskets[i], [canvas1, canvas2, canvas3][i], keys[`player${i + 1}`]);
+        updateFruits(fallingFruits[i], [canvas1, canvas2, canvas3][i], baskets[i], () => {
+          baskets[i].score++;
+          updateScores();
+        });
+        drawBasket(ctx, baskets[i]);
+        drawFruits(ctx, fallingFruits[i]);
+      });
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", e => {
+      switch (e.key) {
+        case "a": keys.player1.left = true; break;
+        case "d": keys.player1.right = true; break;
+        case "f": keys.player2.left = true; break;
+        case "h": keys.player2.right = true; break;
+        case "j": keys.player3.left = true; break;
+        case "l": keys.player3.right = true; break;
+        case "p": // Toggle pause and play
+          isPaused = !isPaused;
+          if (!isPaused) gameLoop();
+          break;
+      }
+    });
+
+    document.addEventListener("keyup", e => {
+      switch (e.key) {
+        case "a": keys.player1.left = false; break;
+        case "d": keys.player1.right = false; break;
+        case "f": keys.player2.left = false; break;
+        case "h": keys.player2.right = false; break;
+        case "j": keys.player3.left = false; break;
+        case "l": keys.player3.right = false; break;
+      }
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>

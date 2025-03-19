@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Shooter Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <h1 style="text-align: center;">3D Shooter Game</h1>
+    <p style="text-align: center;">Use Arrow Keys to Move | Click to Shoot</p>
+    <script>
+        // Basic Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Player Setup
+        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        scene.add(player);
+        camera.position.z = 10;
+
+        // Enemy Setup
+        const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const enemyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+        enemy.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, -10);
+        scene.add(enemy);
+
+        // Score and Health
+        let score = 0;
+        let health = 3;
+
+        // Display Score and Health
+        const updateHUD = () => {
+            document.getElementById('hud').innerHTML = `Score: ${score} | Health: ${health}`;
+        };
+        const hud = document.createElement('div');
+        hud.id = 'hud';
+        hud.style.position = 'absolute';
+        hud.style.top = '10px';
+        hud.style.left = '10px';
+        hud.style.color = 'white';
+        hud.style.fontSize = '20px';
+        document.body.appendChild(hud);
+        updateHUD();
+
+        // Shooting Mechanism
+        window.addEventListener('click', () => {
+            const bulletGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+            bullet.position.copy(player.position);
+            scene.add(bullet);
+
+            const interval = setInterval(() => {
+                bullet.position.z -= 0.5;
+                if (bullet.position.z < -20) {
+                    clearInterval(interval);
+                    scene.remove(bullet);
+                }
+                // Collision Detection
+                if (bullet.position.distanceTo(enemy.position) < 1) {
+                    clearInterval(interval);
+                    scene.remove(bullet);
+                    enemy.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, -10);
+                    score++;
+                    updateHUD();
+                }
+            }, 16);
+        });
+
+        // Enemy Movement
+        const moveEnemy = () => {
+            enemy.position.z += 0.05;
+            if (enemy.position.z > 10) {
+                enemy.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, -10);
+                health--;
+                updateHUD();
+                if (health <= 0) {
+                    alert('Game Over! Refresh to try again.');
+                }
+            }
+        };
+
+        // Player Movement
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') player.position.y += 0.5;
+            if (e.key === 'ArrowDown') player.position.y -= 0.5;
+            if (e.key === 'ArrowLeft') player.position.x -= 0.5;
+            if (e.key === 'ArrowRight') player.position.x += 0.5;
+        });
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            moveEnemy();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

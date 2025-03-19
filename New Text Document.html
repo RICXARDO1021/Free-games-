@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotating Stick Golf Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: green;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            background-color: #5a9;
+            border: 2px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Ball and Hole
+        const hole = { x: 750, y: 550, radius: 15 };
+        const player1 = {
+            x: 400,
+            y: 300,
+            radius: 10,
+            color: "red",
+            angle: 0, // Initial angle of the stick
+            speedX: 0,
+            speedY: 0,
+            power: 10
+        };
+        const stickLength = 50; // Length of the stick
+        const friction = 0.98; // Friction slows the ball over time
+        const wallPadding = player1.radius; // Prevents the ball from going out of bounds
+
+        let stickRotating = true; // Determines if the stick is rotating
+
+        function drawCircle(x, y, radius, color) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawStick(player) {
+            // Calculate the stick's endpoint based on the player's angle
+            const stickX = player.x + stickLength * Math.cos(player.angle);
+            const stickY = player.y + stickLength * Math.sin(player.angle);
+
+            // Draw the stick
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(stickX, stickY);
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the hole
+            drawCircle(hole.x, hole.y, hole.radius, "black");
+
+            // Draw the player and rotating stick
+            drawStick(player1);
+            drawCircle(player1.x, player1.y, player1.radius, player1.color);
+
+            // Check if the ball is in the hole
+            if (isBallInHole(player1)) {
+                alert(`Player WINS!`);
+                resetGame();
+            }
+        }
+
+        function isBallInHole(player) {
+            const dx = player.x - hole.x;
+            const dy = player.y - hole.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (player.radius + hole.radius);
+        }
+
+        function movePlayer(player) {
+            // Launch the ball in the direction of the stick
+            stickRotating = false; // Stop the stick rotation
+            player.speedX = player.power * Math.cos(player.angle);
+            player.speedY = player.power * Math.sin(player.angle);
+        }
+
+        function updatePosition(player) {
+            if (!stickRotating) {
+                player.x += player.speedX;
+                player.y += player.speedY;
+
+                // Check for wall collisions (canvas boundaries)
+                if (player.x - wallPadding < 0 || player.x + wallPadding > canvas.width) {
+                    player.speedX *= -1; // Reverse X direction on wall collision
+                }
+                if (player.y - wallPadding < 0 || player.y + wallPadding > canvas.height) {
+                    player.speedY *= -1; // Reverse Y direction on wall collision
+                }
+
+                // Apply friction
+                player.speedX *= friction;
+                player.speedY *= friction;
+
+                // Stop the ball when speed is low
+                if (Math.abs(player.speedX) < 0.1 && Math.abs(player.speedY) < 0.1) {
+                    player.speedX = 0;
+                    player.speedY = 0;
+
+                    // Reactivate stick rotation once the ball stops
+                    stickRotating = true;
+                }
+            }
+        }
+
+        function resetGame() {
+            player1.x = 400;
+            player1.y = 300;
+            player1.speedX = 0;
+            player1.speedY = 0;
+            player1.angle = 0;
+            stickRotating = true;
+        }
+
+        document.addEventListener("keydown", (event) => {
+            if (event.code === "Enter" && stickRotating) {
+                movePlayer(player1); // Shoot the ball
+            }
+        });
+
+        function gameLoop() {
+            // Rotate the stick if it's still rotating
+            if (stickRotating) {
+                player1.angle += 0.05; // Adjust the rotation speed
+            }
+
+            // Update the player's position
+            updatePosition(player1);
+
+            // Draw the game
+            drawGame();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
